@@ -35,8 +35,9 @@
 
 ## 👤 Profile
 
+
 <div align="center">
-  <img src="https://avatars.githubusercontent.com/u/74038190?v=4" width="150" style="border-radius:50%" alt="hayashikunita" />
+  <img src="https://github.com/hayashikunita.png" width="150" style="border-radius:50%" alt="hayashikunita" />
 </div>
 
 <div align="center">
