@@ -1,0 +1,68 @@
+name: Update GitHub Trophies
+
+on:
+  schedule:
+    - cron: "23 2 * * *" # daily
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-trophies
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch trophies (dark/light)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p assets
+
+          fetch_svg() {
+            local url="$1"
+            local out="$2"
+
+            echo "Fetching: $url"
+            tmp="$(mktemp)"
+
+            # Retry to avoid transient 5xx
+            if ! curl -fsSL --retry 5 --retry-delay 3 --retry-all-errors "$url" -o "$tmp"; then
+              echo "Fetch failed: $url" >&2
+              return 1
+            fi
+
+            # Basic sanity check (avoid committing HTML error pages)
+            if ! grep -qi "<svg" "$tmp"; then
+              echo "Response does not look like SVG for $url" >&2
+              head -n 20 "$tmp" || true
+              return 1
+            fi
+
+            mv "$tmp" "$out"
+          }
+
+          fetch_svg "https://github-profile-trophy.vercel.app/?username=hayashikunita&theme=onedark&no-frame=true&margin-w=6&column=7" "assets/trophies-dark.svg"
+          fetch_svg "https://github-profile-trophy.vercel.app/?username=hayashikunita&theme=flat&no-frame=true&margin-w=6&column=7" "assets/trophies-light.svg"
+
+      - name: Commit changes (if any)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet; then
+            echo "No changes to commit."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add assets/trophies-dark.svg assets/trophies-light.svg
+          git commit -m "chore: update trophies"
+          git push
